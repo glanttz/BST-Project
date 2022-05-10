@@ -33,6 +33,8 @@ results = array('L', [])
 
 fig, axs = plt.subplots(2, 2, figsize=(20,15))
 
+# define algorithm to extract the youngest bits
+
 def makeInputData(data, val = 1):
     inputData = []
     result = 0
@@ -64,34 +66,39 @@ def makeInputData(data, val = 1):
             result = 0
     return inputData
 
+
+# print histogram
 def makeHistogramGraph( data,title, row, col):
     axs[row,col].hist(data, bins = 256)
     axs[row,col].set_title(title)
 
 
-BUF_SIZE = 160  
 
-output = []
-
-
+hashOutput = []
 
 histOneBit = makeInputData(data, 1)
 
+# hash function SHA1
 for item in histOneBit:
-    output.append(hashlib.sha1(item))
+    hashOutput.append(hashlib.sha1(item))
 
 
-output2 = [ s.hexdigest() for s in output ] #Convert hash back to equivalent string in hex
+# converting from string to integer
+hashOutputConvert = [ s.hexdigest() for s in hashOutput ]
+
+hashOutputHexToInt = []
+
 split_strings = []
-for a_string in output2:
+
+for a_string in hashOutputConvert:
     split_strings.append( [a_string[index : index + 2] for index in range(0, len(a_string), 2)] )
-output3 = []
+
+
 for i in split_strings:
     for j in i:
-        output3.append(j)
+        hashOutputHexToInt.append(j)
 
-output4 = [ int(str(s), 16) for s in output3 ]       #Convert hex string to int
-
+results = [ int(str(s), 16) for s in hashOutputHexToInt ]       
 
 
 hisTwoBits = makeInputData(data, 2)
@@ -100,7 +107,7 @@ histFourBits = makeInputData(data, 4)
 
 makeHistogramGraph(histOneBit, "histogram dla próbek 8 bitowych dla jednego bitu wyekstraktowanego", 0,0)
 makeHistogramGraph(hisTwoBits, "histogram dla próbek 8 bitowych dla dwóch bitów wyekstraktowanego", 0,1)
-makeHistogramGraph(output4, "histogram dla próbek 8 bitowych dla 1 bitu wyekstraktowanego po post processingu za pomocą szyfrowania SHA1", 1,0)
+makeHistogramGraph(results, "histogram dla próbek 8 bitowych dla 1 bitu wyekstraktowanego po post processingu za pomocą szyfrowania SHA1", 1,0)
 makeHistogramGraph(histFourBits, "histogram dla próbek 8 bitowych dla czterech bitów wyekstraktowanego", 1,1)
 
 
@@ -110,23 +117,20 @@ makeHistogramGraph(histFourBits, "histogram dla próbek 8 bitowych dla czterech 
 # # hisThreeBits = pd.Series(hisThreeBits)
 # # histFourBits = pd.Series(histFourBits)
 # data = results.value_counts()
-# print('entropy1:', en(data))
+# print('entropyOperation:', en(data))
 
 
-def entropy1(labels, base=None):
+def entropyOperation(labels, base=None):
   value,counts = np.unique(labels, return_counts=True)
   norm_counts = counts / counts.sum()
   base = 2 if base is None else base
   return -(norm_counts * np.log(norm_counts)/np.log(base)).sum()
 
 
-print()
-plt.hist(output4, bins=[0, 256], density=True)
+plt.hist(results, bins=[0, 256], density=True)
 plt.show()
 
-print('entropia dla próbek z najmlodszego bitu:', entropy1(histOneBit, 2))
-print('entropia dla próbek z najmlodszego bitu po processingu:', entropy1(output4, 2))
-
-print('entropia dla próbek z  dwóch najmlodszych bitu:', entropy1(hisTwoBits,2))
-
-print('entropia dla próbek z  czterech najmlodszych bitu:', entropy1(histFourBits))
+print('entropia dla próbek z najmlodszego bitu:', entropyOperation(histOneBit, 2))
+print('entropia dla próbek z najmlodszego bitu po processingu:', entropyOperation(results, 2))
+print('entropia dla próbek z  dwóch najmlodszych bitu:', entropyOperation(hisTwoBits,2))
+print('entropia dla próbek z  czterech najmlodszych bitu:', entropyOperation(histFourBits))
