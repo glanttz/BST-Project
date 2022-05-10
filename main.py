@@ -1,11 +1,16 @@
-import numpy as np
 from array import array
 from scipy.io.wavfile import read as wavread
 from scipy.stats import entropy as en
 import pandas as pd
 from math import log, e
-
+from posixpath import split
+import sys 
+import hashlib
+from ast import For
+import numpy as np
 import matplotlib.pyplot as plt
+import math
+
 
 samplerate = 44100
 freq = 440
@@ -18,15 +23,6 @@ print('rate:', rate, 'Hz')
 print('data is a:', type(data))
 print('data shape is:', data.shape)
 
-# length = data.shape[0] / rate
-# time = np.linspace(0., length, data.shape[0])
-# plt.plot(time, data[:, 0], label="Left channel")
-# plt.plot(time, data[:, 1], label="Right channel")
-# plt.legend()
-# plt.xlabel("Time [s]")
-# plt.ylabel("Amplitude")
-# plt.show()
-
 plt.subplots(dpi=100)
 plt.plot(time[:200] * 1000, data[:200])
 plt.xlabel('milliseconds')
@@ -37,82 +33,100 @@ results = array('L', [])
 
 fig, axs = plt.subplots(2, 2, figsize=(20,15))
 
-def makeInputData(input, mask):
-    inputData = input
+def makeInputData(data, val = 1):
+    inputData = []
     result = 0
-    flag = 0
-    for i in np.array(data[:, 1]):
-        temp = i & mask
-        result = (result | temp) << 1
-        # result = result << 1
-        flag += 1
-        # print("flag:", flag)
-        # print(result)
-        if flag == 7:
+    mask = 0b00000000
+    shifter = 0
+    divider = 0
+    divRes = 0
+    if val == 1:
+        mask = 0b00000001
+        shifter = 1
+        divider = 8
+        divRes = 7
+    elif val == 2:
+        mask = 0b00000011
+        shifter = 2
+        divider = 4
+        divRes = 3
+    elif val == 4:
+        mask = 0b00001111
+        shifter = 4
+        divider = 2
+        divRes = 1
+    else:
+        return
+    for idx, item in enumerate(data[:, 0]):
+        result = (result << shifter | (item & mask))
+        if idx % divider == divRes:
             inputData.append(result)
-            # print("result:", result)
-            # print(i, bin(result))
-            flag = 0
             result = 0
-    
     return inputData
-    
+
 def makeHistogramGraph( data,title, row, col):
-    axs[row,col].hist(data, bins = 40)
+    axs[row,col].hist(data, bins = 256)
     axs[row,col].set_title(title)
 
-# print(results.tolist())
 
-# for i in range(0, len(data)):
-#     print(data[i])
+BUF_SIZE = 160  
 
-# plt.hist(data, bins="auto")
-# plt.show()
+output = []
 
 
-# axs[0, 0].hist(results, bins=40)
-# axs[0, 0].set_title('hist')
+
+histOneBit = makeInputData(data, 1)
+
+for item in histOneBit:
+    output.append(hashlib.sha1(item))
 
 
-histOneBit = makeInputData(results, 1)
-# hisTwoBits = makeInputData(results, 2)
-# hisThreeBits = makeInputData(results, 3)
-# histFourBits = makeInputData(results, 4)
+output2 = [ s.hexdigest() for s in output ] #Convert hash back to equivalent string in hex
+split_strings = []
+for a_string in output2:
+    split_strings.append( [a_string[index : index + 2] for index in range(0, len(a_string), 2)] )
+output3 = []
+for i in split_strings:
+    for j in i:
+        output3.append(j)
+
+output4 = [ int(str(s), 16) for s in output3 ]       #Convert hex string to int
+
+
+
+hisTwoBits = makeInputData(data, 2)
+
+histFourBits = makeInputData(data, 4)
 
 makeHistogramGraph(histOneBit, "histogram dla próbek 8 bitowych dla jednego bitu wyekstraktowanego", 0,0)
-# makeHistogramGraph(hisTwoBits, "histogram dla próbek 8 bitowych dla dwóch bitów wyekstraktowanego", 0,1)
-# makeHistogramGraph(hisThreeBits, "histogram dla próbek 8 bitowych dla trzech bitów wyekstraktowanego", 1,0)
-# makeHistogramGraph(histFourBits, "histogram dla próbek 8 bitowych dla czterech bitów wyekstraktowanego", 1,1)
+makeHistogramGraph(hisTwoBits, "histogram dla próbek 8 bitowych dla dwóch bitów wyekstraktowanego", 0,1)
+makeHistogramGraph(output4, "histogram dla próbek 8 bitowych dla 1 bitu wyekstraktowanego po post processingu za pomocą szyfrowania SHA1", 1,0)
+makeHistogramGraph(histFourBits, "histogram dla próbek 8 bitowych dla czterech bitów wyekstraktowanego", 1,1)
 
 
-# fig, ax = plt.subplots(figsize=(10, 7))
-# ax.hist(results, bins=40)
-# plt.show()
+# results = pd.Series(results)
+# histOneBit = pd.Series(histOneBit)
+# # hisTwoBits = pd.Series(hisTwoBits)
+# # hisThreeBits = pd.Series(hisThreeBits)
+# # histFourBits = pd.Series(histFourBits)
+# data = results.value_counts()
+# print('entropy1:', en(data))
 
-#data = results.value_counts()
-#en(data)
 
-results = pd.Series(results)
-histOneBit = pd.Series(histOneBit)
-# hisTwoBits = pd.Series(hisTwoBits)
-# hisThreeBits = pd.Series(hisThreeBits)
-# histFourBits = pd.Series(histFourBits)
-data = results.value_counts()
-print('entropy1:', en(data))
-
-# def entropy3(results, base=None):
-#   vc = pd.Series(results).value_counts(normalize=True, sort=False)
-#   base = e if base is None else base
-#   return -(vc * np.log(vc)/np.log(base)).sum()
-# print('entropy3:' , entropy3(results))
-
-def entropy4(results, base=None):
-  value,counts = np.unique(results, return_counts=True)
+def entropy1(labels, base=None):
+  value,counts = np.unique(labels, return_counts=True)
   norm_counts = counts / counts.sum()
-  base = e if base is None else base
+  base = 2 if base is None else base
   return -(norm_counts * np.log(norm_counts)/np.log(base)).sum()
 
-print('entropia dla próbek z najmlodszego bitu:', entropy4(histOneBit))
-# print('entropia dla próbek z  dwóch najmlodszych bitu:', entropy4(hisTwoBits))
-# print('entropia dla próbek z  trzech najmlodszych bitu:', entropy4(hisThreeBits))
-# print('entropia dla próbek z  czterech najmlodszych bitu:', entropy4(histFourBits))
+
+print()
+plt.hist(output4, bins=[0, 256], density=True)
+plt.show()
+
+print('entropia dla próbek z najmlodszego bitu:', entropy1(histOneBit, 2))
+print('entropia dla próbek z najmlodszego bitu po processingu:', entropy1(output4, 2))
+
+print('entropia dla próbek z  dwóch najmlodszych bitu:', entropy1(hisTwoBits,2))
+
+print('entropia dla próbek z  czterech najmlodszych bitu:', entropy1(histFourBits))
